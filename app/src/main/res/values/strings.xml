@@ -1,0 +1,46 @@
+<resources>
+    <string name="app_name">CHWeibo</string>
+
+    <!-- 底部导航 -->
+    <string name="nav_home">首页</string>
+    <string name="nav_discover">发现</string>
+    <string name="nav_post">发布</string>
+    <string name="nav_message">消息</string>
+    <string name="nav_profile">我的</string>
+
+    <!-- 登录 -->
+    <string name="login_title">微博账号登录</string>
+    <string name="login_button">登录</string>
+    <string name="login_hint">请输入微博账号和密码</string>
+    <string name="login_error">登录失败，请重试</string>
+
+    <!-- 微博操作 -->
+    <string name="action_repost">转发</string>
+    <string name="action_comment">评论</string>
+    <string name="action_like">赞</string>
+    <string name="action_share">分享</string>
+    <string name="action_more">更多</string>
+
+    <!-- 发布 -->
+    <string name="post_title">发微博</string>
+    <string name="post_hint">分享新鲜事…</string>
+    <string name="post_button">发送</string>
+    <string name="post_add_image">添加图片</string>
+    <string name="post_add_emoji">添加表情</string>
+    <string name="post_add_topic">添加话题</string>
+    <string name="post_at_user">@好友</string>
+
+    <!-- 提示 -->
+    <string name="toast_post_success">发布成功</string>
+    <string name="toast_post_failed">发布失败</string>
+    <string name="toast_like_success">点赞成功</string>
+    <string name="toast_network_error">网络错误，请检查网络连接</string>
+
+    <!-- 设置 -->
+    <string name="settings_title">设置</string>
+    <string name="settings_dark_mode">深色模式</string>
+    <string name="settings_notification">消息通知</string>
+    <string name="settings_clear_cache">清除缓存</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_logout">退出登录</string>
+</resources>

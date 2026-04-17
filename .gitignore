@@ -1,0 +1,63 @@
+# Gradle files
+.gradle/
+build/
+**/build/
+!src/**/build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+.navigation/
+captures/
+output.json
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Log files
+*.log
+
+# Android Studio captures folder
+captures/
+
+# External native build folder generated in Android Studio 2.2 and later
+.externalNativeBuild
+.cxx/
+
+# Google Services (e.g. APIs or Firebase)
+google-services.json
+
+# Keystore files
+*.jks
+*.keystore
+
+# Version control
+*.orig
+
+# Kotlin
+.kotlin/
+
+# Gradle Wrapper - keep these
+!gradle/wrapper/gradle-wrapper.jar
+!gradlew
+!gradlew.bat
+
+# Node modules (if any)
+node_modules/
+
+# Test outputs
+/test-results/
+/reports/
+
+# Coverage
+*.ec

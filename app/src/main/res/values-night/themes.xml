@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme for night mode -->
+    <style name="Theme.WeiboClient" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!-- Primary brand color -->
+        <item name="colorPrimary">@color/weibo_orange</item>
+        <item name="colorPrimaryDark">@color/weibo_orange_dark</item>
+        <item name="colorAccent">@color/weibo_orange</item>
+        <item name="android:statusBarColor">@color/weibo_orange_dark</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

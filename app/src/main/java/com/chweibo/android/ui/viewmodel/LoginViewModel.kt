@@ -21,15 +21,21 @@ class LoginViewModel @Inject constructor(
     val events: SharedFlow<LoginEvent> = _events.asSharedFlow()
 
     val authUrl: String
-        get() = "https://api.weibo.com/oauth2/authorize?" +
-                "client_id=${com.chweibo.android.BuildConfig.WEIBO_APP_KEY}&" +
-                "redirect_uri=${com.chweibo.android.BuildConfig.WEIBO_REDIRECT_URI}&" +
-                "scope=email,direct_messages_read,direct_messages_write," +
-                "friendships_groups_read,friendships_groups_write," +
-                "statuses_to_me_read,follow_app_official_microblog," +
-                "invitation_write&display=mobile"
+        get() = authRepository.getAuthConfig().getAuthorizeUrl()
+
+    fun isValidCallbackUrl(url: String): Boolean {
+        val uri = android.net.Uri.parse(url)
+        val redirectUri = android.net.Uri.parse(com.chweibo.android.BuildConfig.WEIBO_REDIRECT_URI)
+        return uri.scheme == redirectUri.scheme &&
+                uri.host == redirectUri.host &&
+                uri.path == redirectUri.path
+    }
 
     fun handleAuthCallback(url: String) {
+        if (!isValidCallbackUrl(url)) {
+            _uiState.update { it.copy(isLoading = false, error = "Invalid callback URL") }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 

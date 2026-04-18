@@ -7,11 +7,14 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface WeiboDao {
 
-    @Query("SELECT * FROM weibo_posts ORDER BY createdAt DESC")
+    @Query("SELECT * FROM weibo_posts ORDER BY cachedAt DESC")
     fun getAllPosts(): Flow<List<WeiboPostEntity>>
 
     @Query("SELECT * FROM weibo_posts WHERE id = :id")
     suspend fun getPostById(id: Long): WeiboPostEntity?
+
+    @Query("SELECT * FROM weibo_posts WHERE idStr = :idStr LIMIT 1")
+    suspend fun getPostByIdStr(idStr: String): WeiboPostEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPost(post: WeiboPostEntity)

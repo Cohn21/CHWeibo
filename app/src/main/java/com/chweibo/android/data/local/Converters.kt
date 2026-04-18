@@ -9,6 +9,17 @@ class Converters {
     private val gson = Gson()
 
     @TypeConverter
+    fun fromWeiboPost(value: WeiboPost?): String? {
+        return if (value == null) null else gson.toJson(value)
+    }
+
+    @TypeConverter
+    fun toWeiboPost(value: String?): WeiboPost? {
+        if (value.isNullOrEmpty()) return null
+        return gson.fromJson(value, WeiboPost::class.java)
+    }
+
+    @TypeConverter
     fun fromStringList(value: List<String>?): String? {
         return gson.toJson(value)
     }

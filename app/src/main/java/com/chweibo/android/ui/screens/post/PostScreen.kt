@@ -27,18 +27,32 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import com.chweibo.android.ui.theme.WeiboOrange
 import com.chweibo.android.ui.viewmodel.PostViewModel
+import com.chweibo.android.ui.viewmodel.UiEvent
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PostScreen(
     onPostSuccess: () -> Unit,
     onNavigateBack: () -> Unit,
+    onNavigate: (String) -> Unit = {},
     viewModel: PostViewModel = hiltViewModel()
 ) {
     val content by viewModel.content.collectAsState()
     val selectedImages by viewModel.selectedImages.collectAsState()
     val isPosting by viewModel.isPosting.collectAsState()
     val canPost by viewModel.canPost.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collectLatest { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is UiEvent.Navigate -> onNavigate(event.route)
+                is UiEvent.Dismiss -> {}
+            }
+        }
+    }
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
@@ -49,6 +63,7 @@ fun PostScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("发微博") },

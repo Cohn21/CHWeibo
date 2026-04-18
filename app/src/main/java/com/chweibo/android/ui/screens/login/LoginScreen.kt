@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.chweibo.android.ui.viewmodel.LoginViewModel
+import com.chweibo.android.ui.viewmodel.UiEvent
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("SetJavaScriptEnabled")
@@ -40,6 +42,17 @@ fun LoginScreen(
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) {
             onLoginSuccess()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collectLatest { event ->
+            when (event) {
+                is UiEvent.Navigate -> {
+                    if (event.route == "main") onLoginSuccess()
+                }
+                else -> {}
+            }
         }
     }
 

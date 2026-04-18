@@ -27,7 +27,9 @@ import com.chweibo.android.data.model.WeiboPost
 import com.chweibo.android.ui.theme.TextGray
 import com.chweibo.android.ui.theme.WeiboOrange
 import com.chweibo.android.ui.viewmodel.CommentsViewModel
+import com.chweibo.android.ui.viewmodel.UiEvent
 import com.chweibo.android.utils.TimeUtils
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,12 +43,23 @@ fun CommentsScreen(
     val weibo by viewModel.weibo.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val commentText by viewModel.commentText.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(weiboId) {
         viewModel.loadWeiboAndComments(weiboId)
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collectLatest { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                else -> {}
+            }
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("评论") },

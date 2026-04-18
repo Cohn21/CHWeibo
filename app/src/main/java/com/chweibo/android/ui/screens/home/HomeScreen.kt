@@ -24,15 +24,17 @@ import androidx.paging.compose.itemKey
 import com.chweibo.android.data.model.WeiboPost
 import com.chweibo.android.ui.theme.WeiboOrange
 import com.chweibo.android.ui.viewmodel.HomeViewModel
+import com.chweibo.android.ui.viewmodel.UiEvent
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun HomeScreen(
-    onNavigateToDetail: (Long) -> Unit,
+    onNavigateToDetail: (String) -> Unit,
     onNavigateToProfile: (Long) -> Unit,
     onNavigateToImageViewer: (List<String>, Int) -> Unit,
     onNavigateToRepost: (Long) -> Unit = {},
+    onNavigateToComments: (Long) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val timeline = viewModel.timeline.collectAsLazyPagingItems()
@@ -47,14 +49,20 @@ fun HomeScreen(
         }
     )
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
     LaunchedEffect(Unit) {
-        viewModel.errorMessage.collectLatest { message ->
-            // 可以显示 Snackbar
+        viewModel.uiEvent.collectLatest { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                else -> {}
+            }
         }
     }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -111,7 +119,7 @@ fun HomeScreen(
                         onImageClick = onNavigateToImageViewer,
                         onLikeClick = { viewModel.likeWeibo(it) },
                         onRepostClick = onNavigateToRepost,
-                        onCommentClick = { /* Navigate to comments */ }
+                        onCommentClick = onNavigateToComments
                     )
                 }
             }
@@ -129,7 +137,7 @@ fun HomeScreen(
 @Composable
 fun WeiboList(
     weibos: LazyPagingItems<WeiboPost>,
-    onWeiboClick: (Long) -> Unit,
+    onWeiboClick: (String) -> Unit,
     onUserClick: (Long) -> Unit,
     onImageClick: (List<String>, Int) -> Unit,
     onLikeClick: (Long) -> Unit,
@@ -149,7 +157,7 @@ fun WeiboList(
             if (weibo != null) {
                 WeiboCard(
                     weibo = weibo,
-                    onWeiboClick = { onWeiboClick(weibo.id) },
+                    onWeiboClick = { onWeiboClick(weibo.idStr ?: weibo.id.toString()) },
                     onUserClick = { weibo.user?.id?.let { onUserClick(it) } },
                     onImageClick = { urls, idx -> onImageClick(urls, idx) },
                     onLikeClick = { onLikeClick(weibo.id) },

@@ -26,6 +26,8 @@ import coil.request.ImageRequest
 import com.chweibo.android.data.model.User
 import com.chweibo.android.ui.theme.WeiboOrange
 import com.chweibo.android.ui.viewmodel.ProfileViewModel
+import com.chweibo.android.ui.viewmodel.UiEvent
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,8 +40,19 @@ fun ProfileScreen(
 ) {
     val user by viewModel.user.collectAsState()
     val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collectLatest { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                else -> {}
+            }
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("我的") },

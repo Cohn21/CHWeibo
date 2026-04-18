@@ -7,35 +7,32 @@ import com.chweibo.android.data.model.WeiboTimelineResponse
 import retrofit2.Response
 
 class WeiboPagingSource(
-    private val apiCall: suspend (Int, Long?, Long?) -> Response<WeiboTimelineResponse>
-) : PagingSource<Long, WeiboPost>() {
+    private val apiCall: suspend (page: Int, loadSize: Int, sinceId: Long?, maxId: Long?) -> Response<WeiboTimelineResponse>,
+    private val onPageLoaded: suspend (List<WeiboPost>) -> Unit = {}
+) : PagingSource<Int, WeiboPost>() {
 
-    override fun getRefreshKey(state: PagingState<Long, WeiboPost>): Long? {
+    override fun getRefreshKey(state: PagingState<Int, WeiboPost>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
-            state.closestPageToPosition(anchorPosition)?.prevKey
+            state.closestPageToPosition(anchorPosition)?.prevKey?.plus(1)
+                ?: state.closestPageToPosition(anchorPosition)?.nextKey?.minus(1)
         }
     }
 
-    override suspend fun load(params: LoadParams<Long>): LoadResult<Long, WeiboPost> {
+    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, WeiboPost> {
         return try {
-            val maxId = params.key
-            val response = apiCall(params.loadSize, null, maxId)
+            val page = params.key ?: 1
+            val response = apiCall(page, params.loadSize, null, null)
 
             if (response.isSuccessful && response.body() != null) {
                 val data = response.body()!!
                 val posts = data.statuses
+                onPageLoaded(posts)
 
-                // 计算下一页的 key
-                // 微博 API 使用 max_id 进行分页，返回的数据包含 max_id，需要减 1 避免重复
-                val nextKey = if (posts.isEmpty() || data.nextCursor == 0L) {
-                    null
-                } else {
-                    data.nextCursor - 1
-                }
+                val nextKey = if (posts.isEmpty()) null else page + 1
 
                 LoadResult.Page(
                     data = posts,
-                    prevKey = null,  // 微博时间线只支持向后加载
+                    prevKey = if (page == 1) null else page - 1,
                     nextKey = nextKey
                 )
             } else {

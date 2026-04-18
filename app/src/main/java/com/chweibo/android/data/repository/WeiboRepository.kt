@@ -3,6 +3,7 @@ package com.chweibo.android.data.repository
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import com.chweibo.android.data.api.RateLimitStatus
 import com.chweibo.android.data.api.WeiboApiService
 import com.chweibo.android.data.local.dao.WeiboDao
 import com.chweibo.android.data.model.*
@@ -36,14 +37,19 @@ class WeiboRepository @Inject constructor(
                 prefetchDistance = 5
             ),
             pagingSourceFactory = {
-                WeiboPagingSource { page, sinceId, maxId ->
-                    apiService.getHomeTimeline(
-                        sinceId = sinceId,
-                        maxId = maxId,
-                        count = page,
-                        page = 1
-                    )
-                }
+                WeiboPagingSource(
+                    apiCall = { page, loadSize, sinceId, maxId ->
+                        apiService.getHomeTimeline(
+                            sinceId = sinceId,
+                            maxId = maxId,
+                            count = loadSize,
+                            page = page
+                        )
+                    },
+                    onPageLoaded = { posts ->
+                        cachePosts(posts)
+                    }
+                )
             }
         ).flow
     }
@@ -55,14 +61,20 @@ class WeiboRepository @Inject constructor(
                 enablePlaceholders = false
             ),
             pagingSourceFactory = {
-                WeiboPagingSource { page, sinceId, maxId ->
-                    apiService.getUserTimeline(
-                        uid = uid,
-                        sinceId = sinceId,
-                        maxId = maxId,
-                        count = page
-                    )
-                }
+                WeiboPagingSource(
+                    apiCall = { page, loadSize, sinceId, maxId ->
+                        apiService.getUserTimeline(
+                            uid = uid,
+                            sinceId = sinceId,
+                            maxId = maxId,
+                            count = loadSize,
+                            page = page
+                        )
+                    },
+                    onPageLoaded = { posts ->
+                        cachePosts(posts)
+                    }
+                )
             }
         ).flow
     }
@@ -138,17 +150,28 @@ class WeiboRepository @Inject constructor(
         }
     }
 
-    suspend fun getWeiboDetail(id: Long): Result<WeiboPost> {
+    suspend fun getWeiboDetail(id: String): Result<WeiboPost> {
         return try {
+            android.util.Log.d("WeiboRepository", "getWeiboDetail called with id: $id")
             val response = apiService.getWeiboDetail(id)
+            android.util.Log.d("WeiboRepository", "Response code: ${response.code()}, body: ${response.errorBody()?.string()}")
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {
+                val errorBody = response.errorBody()?.string()
+                android.util.Log.e("WeiboRepository", "Error response: $errorBody")
                 Result.failure(HttpException(response))
             }
         } catch (e: Exception) {
+            android.util.Log.e("WeiboRepository", "Exception: ${e.message}", e)
             Result.failure(e)
         }
+    }
+
+    suspend fun getCachedWeibo(id: String): WeiboPost? {
+        val entity = weiboDao.getPostByIdStr(id)
+            ?: id.toLongOrNull()?.let { weiboDao.getPostById(it) }
+        return entity?.toWeiboPost()
     }
 
     // ==================== 转发 ====================
@@ -321,6 +344,21 @@ class WeiboRepository @Inject constructor(
     suspend fun unfollowUser(uid: Long): Result<User> {
         return try {
             val response = apiService.unfollowUser(uid = uid)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(HttpException(response))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ==================== 账号限制查询 ====================
+
+    suspend fun getRateLimitStatus(): Result<RateLimitStatus> {
+        return try {
+            val response = apiService.getRateLimitStatus()
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {

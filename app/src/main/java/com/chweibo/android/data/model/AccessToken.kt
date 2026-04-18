@@ -21,6 +21,9 @@ data class AccessToken(
     @SerializedName("isRealName")
     val isRealName: String? = null,
 
+    @SerializedName("refresh_token")
+    val refreshToken: String? = null,
+
     // 本地计算的过期时间
     val expiresAt: Long = System.currentTimeMillis() + (expiresIn * 1000)
 ) {

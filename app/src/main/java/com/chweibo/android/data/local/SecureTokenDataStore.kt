@@ -7,9 +7,12 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.chweibo.android.data.model.AccessToken
 import com.chweibo.android.security.CryptoManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,8 +33,28 @@ class SecureTokenDataStore @Inject constructor(
         val IS_LOGGED_IN = booleanPreferencesKey("is_logged_in")
     }
 
+    @Volatile
+    private var cachedAccessToken: String? = null
+
+    @Volatile
+    private var cachedRefreshToken: String? = null
+
+    init {
+        // Warm cache on init
+        CoroutineScope(Dispatchers.IO).launch {
+            accessToken.collect { cachedAccessToken = it }
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            refreshToken.collect { cachedRefreshToken = it }
+        }
+    }
+
     val accessToken: Flow<String?> = dataStore.data.map { preferences ->
         preferences[ACCESS_TOKEN]?.let { cryptoManager.decrypt(it) }
+    }
+
+    val refreshToken: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[REFRESH_TOKEN]?.let { cryptoManager.decrypt(it) }
     }
 
     val isLoggedIn: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -46,13 +69,21 @@ class SecureTokenDataStore @Inject constructor(
         preferences[EXPIRES_AT] ?: 0L
     }
 
+    fun getAccessTokenSync(): String? = cachedAccessToken
+    fun getRefreshTokenSync(): String? = cachedRefreshToken
+
     suspend fun saveToken(accessToken: AccessToken) {
         dataStore.edit { preferences ->
             preferences[ACCESS_TOKEN] = cryptoManager.encrypt(accessToken.accessToken)
+            accessToken.refreshToken?.let {
+                preferences[REFRESH_TOKEN] = cryptoManager.encrypt(it)
+            }
             preferences[EXPIRES_AT] = accessToken.expiresAt
             preferences[USER_ID] = accessToken.uid?.let { cryptoManager.encrypt(it) } ?: ""
             preferences[IS_LOGGED_IN] = true
         }
+        cachedAccessToken = accessToken.accessToken
+        cachedRefreshToken = accessToken.refreshToken
     }
 
     suspend fun clearToken() {
@@ -63,6 +94,8 @@ class SecureTokenDataStore @Inject constructor(
             preferences.remove(USER_ID)
             preferences[IS_LOGGED_IN] = false
         }
+        cachedAccessToken = null
+        cachedRefreshToken = null
     }
 
     suspend fun getCurrentToken(): AccessToken? {
@@ -71,6 +104,7 @@ class SecureTokenDataStore @Inject constructor(
         return if (token != null) {
             AccessToken(
                 accessToken = token,
+                refreshToken = prefs[REFRESH_TOKEN]?.let { cryptoManager.decrypt(it) },
                 expiresIn = 0,
                 uid = prefs[USER_ID]?.let { cryptoManager.decrypt(it) },
                 expiresAt = prefs[EXPIRES_AT] ?: 0

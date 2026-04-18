@@ -28,11 +28,11 @@ class PostViewModel @Inject constructor(
     private val _isPosting = MutableStateFlow(false)
     val isPosting: StateFlow<Boolean> = _isPosting.asStateFlow()
 
-    private val _postSuccess = MutableSharedFlow<Boolean>()
-    val postSuccess: SharedFlow<Boolean> = _postSuccess.asSharedFlow()
-
-    private val _errorMessage = MutableSharedFlow<String>()
-    val errorMessage: SharedFlow<String> = _errorMessage.asSharedFlow()
+    private val _uiEvent = MutableSharedFlow<UiEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    val uiEvent: SharedFlow<UiEvent> = _uiEvent.asSharedFlow()
 
     private val _canPost = MutableStateFlow(false)
     val canPost: StateFlow<Boolean> = combine(
@@ -57,14 +57,14 @@ class PostViewModel @Inject constructor(
     fun postWeibo() {
         viewModelScope.launch {
             if (_content.value.isBlank()) {
-                _errorMessage.emit("请输入内容")
+                _uiEvent.emit(UiEvent.ShowSnackbar("请输入内容"))
                 return@launch
             }
 
             // 检查速率限制
             val (canCall, waitTime) = rateLimitManager.canMakeCall("post")
             if (!canCall) {
-                _errorMessage.emit(rateLimitManager.getWaitMessage("post"))
+                _uiEvent.emit(UiEvent.ShowSnackbar(rateLimitManager.getWaitMessage("post")))
                 return@launch
             }
 
@@ -82,13 +82,14 @@ class PostViewModel @Inject constructor(
                 }
 
                 result.onSuccess {
-                    _postSuccess.emit(true)
+                    _uiEvent.emit(UiEvent.ShowSnackbar("发布成功"))
+                    _uiEvent.emit(UiEvent.Navigate("back"))
                     clear()
                 }.onFailure { e ->
                     handleApiError(e, "发布失败")
                 }
             } catch (e: Exception) {
-                _errorMessage.emit(e.message ?: "发布失败")
+                _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "发布失败"))
             } finally {
                 _isPosting.value = false
             }
@@ -104,7 +105,7 @@ class PostViewModel @Inject constructor(
             e.message?.contains("10022") == true -> "接口请求次数已用完"
             else -> e.message ?: defaultMsg
         }
-        _errorMessage.emit(msg)
+        _uiEvent.emit(UiEvent.ShowSnackbar(msg))
     }
 
     fun saveToDraft() {

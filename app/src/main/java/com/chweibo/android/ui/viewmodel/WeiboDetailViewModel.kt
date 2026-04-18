@@ -37,8 +37,11 @@ class WeiboDetailViewModel @Inject constructor(
 
     private val _replyToComment = MutableStateFlow<Comment?>(null)
 
-    private val _errorMessage = MutableSharedFlow<String>()
-    val errorMessage: SharedFlow<String> = _errorMessage.asSharedFlow()
+    private val _uiEvent = MutableSharedFlow<UiEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    val uiEvent: SharedFlow<UiEvent> = _uiEvent.asSharedFlow()
 
     companion object {
         private const val TAG = "WeiboDetailViewModel"
@@ -50,7 +53,7 @@ class WeiboDetailViewModel @Inject constructor(
         if (weiboId.isBlank()) {
             Log.e(TAG, "Invalid weiboId: $weiboId")
             viewModelScope.launch {
-                _errorMessage.emit("Invalid weibo id: $weiboId")
+                _uiEvent.emit(UiEvent.ShowSnackbar("Invalid weibo id: $weiboId"))
             }
             return
         }
@@ -70,7 +73,7 @@ class WeiboDetailViewModel @Inject constructor(
                     if (e.message?.contains("20112") == true && cachedWeibo != null) {
                         _weibo.value = cachedWeibo
                         _comments.value = emptyList()
-                        _errorMessage.emit("Detail API denied access. Showing cached timeline content.")
+                        _uiEvent.emit(UiEvent.ShowSnackbar("Detail API denied access. Showing cached timeline content."))
                     } else {
                         _weibo.value = null
                         _comments.value = emptyList()
@@ -94,7 +97,7 @@ class WeiboDetailViewModel @Inject constructor(
                     handleApiError(e, "Failed to load comments")
                 }
         } else {
-            _errorMessage.emit("Comments are rate limited: ${rateLimitManager.getWaitMessage("comments")}")
+            _uiEvent.emit(UiEvent.ShowSnackbar("Comments are rate limited: ${rateLimitManager.getWaitMessage("comments")}"))
         }
     }
 
@@ -115,7 +118,7 @@ class WeiboDetailViewModel @Inject constructor(
 
             val (canCall, _) = rateLimitManager.canMakeCall("comments")
             if (!canCall) {
-                _errorMessage.emit(rateLimitManager.getWaitMessage("comments"))
+                _uiEvent.emit(UiEvent.ShowSnackbar(rateLimitManager.getWaitMessage("comments")))
                 return@launch
             }
 
@@ -148,7 +151,7 @@ class WeiboDetailViewModel @Inject constructor(
 
             val (canCall, _) = rateLimitManager.canMakeCall("like")
             if (!canCall) {
-                _errorMessage.emit(rateLimitManager.getWaitMessage("like"))
+                _uiEvent.emit(UiEvent.ShowSnackbar(rateLimitManager.getWaitMessage("like")))
                 return@launch
             }
 
@@ -180,7 +183,7 @@ class WeiboDetailViewModel @Inject constructor(
 
             val (canCall, _) = rateLimitManager.canMakeCall("post")
             if (!canCall) {
-                _errorMessage.emit(rateLimitManager.getWaitMessage("post"))
+                _uiEvent.emit(UiEvent.ShowSnackbar(rateLimitManager.getWaitMessage("post")))
                 return@launch
             }
 
@@ -190,7 +193,7 @@ class WeiboDetailViewModel @Inject constructor(
                     _weibo.value = _weibo.value?.copy(
                         repostsCount = (_weibo.value?.repostsCount ?: 0) + 1
                     )
-                    _errorMessage.emit("Repost succeeded")
+                    _uiEvent.emit(UiEvent.ShowSnackbar("Repost succeeded"))
                 }.onFailure { e ->
                     handleApiError(e, "Failed to repost weibo")
                 }
@@ -211,6 +214,6 @@ class WeiboDetailViewModel @Inject constructor(
             e.message?.contains("20003") == true -> "User not found"
             else -> "$defaultMsg: ${e.message}"
         }
-        _errorMessage.emit(msg)
+        _uiEvent.emit(UiEvent.ShowSnackbar(msg))
     }
 }

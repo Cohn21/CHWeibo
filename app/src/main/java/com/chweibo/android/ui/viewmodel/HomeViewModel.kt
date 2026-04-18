@@ -24,8 +24,11 @@ class HomeViewModel @Inject constructor(
     private val _timeline = MutableStateFlow<PagingData<WeiboPost>>(PagingData.empty())
     val timeline: StateFlow<PagingData<WeiboPost>> = _timeline.asStateFlow()
 
-    private val _errorMessage = MutableSharedFlow<String>()
-    val errorMessage: SharedFlow<String> = _errorMessage.asSharedFlow()
+    private val _uiEvent = MutableSharedFlow<UiEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    val uiEvent: SharedFlow<UiEvent> = _uiEvent.asSharedFlow()
 
     // 防抖动：记录上次刷新时间
     private var lastRefreshTime = 0L
@@ -52,14 +55,14 @@ class HomeViewModel @Inject constructor(
             // 使用 RateLimitManager 检查是否可以调用
             val (canCall, waitTime) = rateLimitManager.canMakeCall("home_timeline")
             if (!canCall) {
-                _errorMessage.emit(rateLimitManager.getWaitMessage("home_timeline"))
+                _uiEvent.emit(UiEvent.ShowSnackbar(rateLimitManager.getWaitMessage("home_timeline")))
                 return@launch
             }
 
             // 检查刷新间隔，防止频繁请求
             val currentTime = System.currentTimeMillis()
             if (currentTime - lastRefreshTime < minRefreshInterval) {
-                _errorMessage.emit("操作太频繁，请稍后再试")
+                _uiEvent.emit(UiEvent.ShowSnackbar("操作太频繁，请稍后再试"))
                 return@launch
             }
 
@@ -78,7 +81,7 @@ class HomeViewModel @Inject constructor(
                     e.message?.contains("10022") == true -> "接口请求次数已用完"
                     else -> e.message ?: "刷新失败"
                 }
-                _errorMessage.emit(errorMsg)
+                _uiEvent.emit(UiEvent.ShowSnackbar(errorMsg))
             } finally {
                 _refreshing.value = false
             }
@@ -89,7 +92,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val (canCall, _) = rateLimitManager.canMakeCall("like")
             if (!canCall) {
-                _errorMessage.emit(rateLimitManager.getWaitMessage("like"))
+                _uiEvent.emit(UiEvent.ShowSnackbar(rateLimitManager.getWaitMessage("like")))
                 return@launch
             }
 
@@ -105,7 +108,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val (canCall, _) = rateLimitManager.canMakeCall("like")
             if (!canCall) {
-                _errorMessage.emit(rateLimitManager.getWaitMessage("like"))
+                _uiEvent.emit(UiEvent.ShowSnackbar(rateLimitManager.getWaitMessage("like")))
                 return@launch
             }
 
@@ -121,14 +124,14 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val (canCall, _) = rateLimitManager.canMakeCall("post")
             if (!canCall) {
-                _errorMessage.emit(rateLimitManager.getWaitMessage("post"))
+                _uiEvent.emit(UiEvent.ShowSnackbar(rateLimitManager.getWaitMessage("post")))
                 return@launch
             }
 
             rateLimitManager.recordCall("post")
             weiboRepository.repostWeibo(weiboId, content)
                 .onSuccess {
-                    _errorMessage.emit("转发成功")
+                    _uiEvent.emit(UiEvent.ShowSnackbar("转发成功"))
                 }
                 .onFailure { e ->
                     handleApiError(e, "转发失败")
@@ -154,6 +157,6 @@ class HomeViewModel @Inject constructor(
             e.message?.contains("10022") == true -> "接口请求次数已用完"
             else -> e.message ?: defaultMsg
         }
-        _errorMessage.emit(msg)
+        _uiEvent.emit(UiEvent.ShowSnackbar(msg))
     }
 }

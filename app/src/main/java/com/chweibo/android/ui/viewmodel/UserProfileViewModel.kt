@@ -31,8 +31,11 @@ class UserProfileViewModel @Inject constructor(
     private val _isFollowing = MutableStateFlow(false)
     val isFollowing: StateFlow<Boolean> = _isFollowing.asStateFlow()
 
-    private val _errorMessage = MutableSharedFlow<String>()
-    val errorMessage: SharedFlow<String> = _errorMessage.asSharedFlow()
+    private val _uiEvent = MutableSharedFlow<UiEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    val uiEvent: SharedFlow<UiEvent> = _uiEvent.asSharedFlow()
 
     fun loadUserInfo(userId: Long) {
         viewModelScope.launch {
@@ -48,13 +51,13 @@ class UserProfileViewModel @Inject constructor(
                         _isFollowing.value = userInfo.following
                     }
                     .onFailure { e ->
-                        _errorMessage.emit(e.message ?: "加载用户信息失败")
+                        _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "加载用户信息失败"))
                     }
 
                 // 加载用户微博
                 loadUserWeibos(userId)
             } else {
-                _errorMessage.emit("请求太频繁，请稍后再试")
+                _uiEvent.emit(UiEvent.ShowSnackbar("请求太频繁，请稍后再试"))
             }
 
             _isLoading.value = false
@@ -80,9 +83,9 @@ class UserProfileViewModel @Inject constructor(
 
             result.onSuccess {
                 _isFollowing.value = !currentFollowing
-                _errorMessage.emit(if (currentFollowing) "取消关注成功" else "关注成功")
+                _uiEvent.emit(UiEvent.ShowSnackbar(if (currentFollowing) "取消关注成功" else "关注成功"))
             }.onFailure { e ->
-                _errorMessage.emit(e.message ?: "操作失败")
+                _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "操作失败"))
             }
         }
     }

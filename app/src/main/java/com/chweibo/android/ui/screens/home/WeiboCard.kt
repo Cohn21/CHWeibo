@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -26,7 +27,9 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.chweibo.android.data.model.WeiboPost
 import com.chweibo.android.ui.components.ImageGrid
+import com.chweibo.android.ui.components.video.VideoThumbnail
 import com.chweibo.android.ui.theme.RepostBackground
+import com.chweibo.android.ui.theme.RepostBackgroundDark
 import com.chweibo.android.ui.theme.TextGray
 import com.chweibo.android.ui.theme.WeiboOrange
 import com.chweibo.android.utils.TimeUtils
@@ -219,16 +222,24 @@ fun WeiboContent(
             lineHeight = 22.sp
         )
 
-        // 图片网格
-        val pics = weibo.getThumbnailPics()
-        if (pics.isNotEmpty()) {
+        // 视频或图片
+        if (weibo.hasVideo()) {
             Spacer(modifier = Modifier.height(8.dp))
-            ImageGrid(
-                images = pics,
-                onImageClick = { index ->
-                    onImageClick(weibo.getAllPics(), index)
-                }
+            VideoThumbnail(
+                videoUrl = weibo.videoUrl ?: "",
+                onClick = { /* TODO: play video */ }
             )
+        } else {
+            val pics = weibo.getThumbnailPics()
+            if (pics.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                ImageGrid(
+                    images = pics,
+                    onImageClick = { index ->
+                        onImageClick(weibo.getAllPics(), index)
+                    }
+                )
+            }
         }
 
         // 转发内容
@@ -248,10 +259,14 @@ fun RetweetedContent(
     onImageClick: (List<String>, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val backgroundColor = if (isDarkTheme) RepostBackgroundDark else RepostBackground
+    val textColor = MaterialTheme.colorScheme.onSurface
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(RepostBackground, RoundedCornerShape(4.dp))
+            .background(backgroundColor, RoundedCornerShape(4.dp))
             .padding(10.dp)
     ) {
         // 转发用户信息
@@ -260,7 +275,9 @@ fun RetweetedContent(
             withStyle(style = SpanStyle(color = WeiboOrange)) {
                 append("@$userName")
             }
-            append(": ${weibo.text}")
+            withStyle(style = SpanStyle(color = textColor)) {
+                append(": ${weibo.text}")
+            }
         }
 
         Text(
@@ -269,16 +286,24 @@ fun RetweetedContent(
             lineHeight = 20.sp
         )
 
-        // 转发图片
-        val pics = weibo.getThumbnailPics()
-        if (pics.isNotEmpty()) {
+        // 转发视频或图片
+        if (weibo.hasVideo()) {
             Spacer(modifier = Modifier.height(6.dp))
-            ImageGrid(
-                images = pics,
-                onImageClick = { index ->
-                    onImageClick(weibo.getAllPics(), index)
-                }
+            VideoThumbnail(
+                videoUrl = weibo.videoUrl ?: "",
+                onClick = { /* TODO: play video */ }
             )
+        } else {
+            val pics = weibo.getThumbnailPics()
+            if (pics.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                ImageGrid(
+                    images = pics,
+                    onImageClick = { index ->
+                        onImageClick(weibo.getAllPics(), index)
+                    }
+                )
+            }
         }
     }
 }

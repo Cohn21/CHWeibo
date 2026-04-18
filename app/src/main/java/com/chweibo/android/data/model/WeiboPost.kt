@@ -84,6 +84,12 @@ data class WeiboPost(
     @SerializedName("card")
     val card: Card? = null,
 
+    @SerializedName("video_url")
+    val videoUrl: String? = null,
+
+    @SerializedName("video_cover")
+    val videoCoverUrl: String? = null,
+
     // 本地字段
     val cachedAt: Long = System.currentTimeMillis()
 ) {
@@ -112,6 +118,8 @@ data class WeiboPost(
             ?: picInfos?.values?.map { it.thumbnail?.url ?: "" }
             ?: emptyList()
     }
+
+    fun hasVideo(): Boolean = !videoUrl.isNullOrEmpty()
 }
 
 data class Geo(

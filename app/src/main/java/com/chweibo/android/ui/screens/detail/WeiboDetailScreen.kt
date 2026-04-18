@@ -70,6 +70,8 @@ import coil.request.ImageRequest
 import com.chweibo.android.data.model.Comment
 import com.chweibo.android.data.model.WeiboPost
 import com.chweibo.android.ui.components.ImageGrid
+import com.chweibo.android.ui.components.video.VideoPlayer
+import com.chweibo.android.ui.components.video.VideoThumbnail
 import com.chweibo.android.ui.screens.comments.CommentItem
 import com.chweibo.android.ui.screens.home.VerifiedBadge
 import com.chweibo.android.ui.screens.home.formatCount
@@ -388,13 +390,21 @@ fun WeiboDetailHeader(
             color = MaterialTheme.colorScheme.onSurface
         )
 
-        val pics = weibo.getThumbnailPics()
-        if (pics.isNotEmpty()) {
+        if (weibo.hasVideo()) {
             Spacer(modifier = Modifier.height(12.dp))
-            ImageGrid(
-                images = pics,
-                onImageClick = { index -> onImageClick(weibo.getAllPics(), index) }
+            VideoPlayer(
+                videoUrl = weibo.videoUrl ?: "",
+                autoPlay = false
             )
+        } else {
+            val pics = weibo.getThumbnailPics()
+            if (pics.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                ImageGrid(
+                    images = pics,
+                    onImageClick = { index -> onImageClick(weibo.getAllPics(), index) }
+                )
+            }
         }
 
         weibo.retweetedStatus?.let { retweeted ->
@@ -446,13 +456,21 @@ fun RetweetedSection(
             lineHeight = 22.sp
         )
 
-        val pics = weibo.getThumbnailPics()
-        if (pics.isNotEmpty()) {
+        if (weibo.hasVideo()) {
             Spacer(modifier = Modifier.height(8.dp))
-            ImageGrid(
-                images = pics,
-                onImageClick = { index -> onImageClick(weibo.getAllPics(), index) }
+            VideoThumbnail(
+                videoUrl = weibo.videoUrl ?: "",
+                onClick = { /* TODO: play video */ }
             )
+        } else {
+            val pics = weibo.getThumbnailPics()
+            if (pics.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                ImageGrid(
+                    images = pics,
+                    onImageClick = { index -> onImageClick(weibo.getAllPics(), index) }
+                )
+            }
         }
     }
 }

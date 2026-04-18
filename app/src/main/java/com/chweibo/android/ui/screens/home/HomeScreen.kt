@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -35,6 +36,7 @@ fun HomeScreen(
     onNavigateToImageViewer: (List<String>, Int) -> Unit,
     onNavigateToRepost: (Long) -> Unit = {},
     onNavigateToComments: (Long) -> Unit = {},
+    onLogout: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val timeline = viewModel.timeline.collectAsLazyPagingItems()
@@ -55,10 +57,15 @@ fun HomeScreen(
         viewModel.uiEvent.collectLatest { event ->
             when (event) {
                 is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is UiEvent.Navigate -> {
+                    if (event.route == "login") onLogout()
+                }
                 else -> {}
             }
         }
     }
+
+    var accountMenuExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -71,6 +78,34 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
+                },
+                actions = {
+                    IconButton(onClick = { accountMenuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "账号管理",
+                            tint = Color.White
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = accountMenuExpanded,
+                        onDismissRequest = { accountMenuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("退出登录") },
+                            onClick = {
+                                accountMenuExpanded = false
+                                viewModel.logout()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("切换账号 / 登录") },
+                            onClick = {
+                                accountMenuExpanded = false
+                                viewModel.logout()
+                            }
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = WeiboOrange,

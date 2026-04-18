@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.chweibo.android.data.model.WeiboPost
+import com.chweibo.android.data.repository.AuthRepository
 import com.chweibo.android.data.repository.WeiboRepository
 import com.chweibo.android.utils.RateLimitManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,6 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val weiboRepository: WeiboRepository,
+    private val authRepository: AuthRepository,
     private val rateLimitManager: RateLimitManager
 ) : ViewModel() {
 
@@ -136,6 +138,13 @@ class HomeViewModel @Inject constructor(
                 .onFailure { e ->
                     handleApiError(e, "转发失败")
                 }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            authRepository.logout()
+            _uiEvent.emit(UiEvent.Navigate("login"))
         }
     }
 

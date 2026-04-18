@@ -125,6 +125,11 @@ fun NavigationHost(
                 },
                 onNavigateToComments = { weiboId ->
                     navController.navigate(Screen.Comments.createRoute(weiboId))
+                },
+                onLogout = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
                 }
             )
         }
@@ -146,6 +151,11 @@ fun NavigationHost(
                 },
                 onNavigateToComments = { weiboId ->
                     navController.navigate(Screen.Comments.createRoute(weiboId))
+                },
+                onLogout = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
                 }
             )
         }

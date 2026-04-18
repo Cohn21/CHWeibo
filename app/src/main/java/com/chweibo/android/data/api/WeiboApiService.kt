@@ -1,5 +1,6 @@
 package com.chweibo.android.data.api
 
+import com.chweibo.android.BuildConfig
 import com.chweibo.android.data.model.*
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -31,6 +32,15 @@ interface WeiboApiService {
     suspend fun revokeToken(
         @Field("access_token") accessToken: String
     ): Response<Map<String, Any>>
+
+    @POST("oauth2/access_token")
+    @FormUrlEncoded
+    suspend fun refreshToken(
+        @Field("refresh_token") refreshToken: String,
+        @Field("grant_type") grantType: String = "refresh_token",
+        @Field("client_id") clientId: String = BuildConfig.WEIBO_APP_KEY,
+        @Field("client_secret") clientSecret: String = BuildConfig.WEIBO_CLIENT_SECRET
+    ): AccessToken
 
     // ==================== 用户信息 ====================
 
@@ -122,7 +132,7 @@ interface WeiboApiService {
 
     @GET("statuses/show.json")
     suspend fun getWeiboDetail(
-        @Query("id") id: Long
+        @Query("id") id: String
     ): Response<WeiboPost>
 
     // ==================== 转发 ====================
@@ -239,7 +249,22 @@ interface WeiboApiService {
         @Field("uid") uid: Long? = null,
         @Field("screen_name") screenName: String? = null
     ): Response<User>
+
+    // ==================== 账号限制查询 ====================
+
+    @GET("account/rate_limit_status.json")
+    suspend fun getRateLimitStatus(): Response<RateLimitStatus>
 }
+
+data class RateLimitStatus(
+    val ip_limit: Int = 0,
+    val limit_time_unit: String = "",
+    val remaining_ip_hits: Int = 0,
+    val remaining_user_hits: Int = 0,
+    val reset_time: String = "",
+    val reset_time_in_seconds: Int = 0,
+    val user_limit: Int = 0
+)
 
 data class UserCount(
     val id: Long,

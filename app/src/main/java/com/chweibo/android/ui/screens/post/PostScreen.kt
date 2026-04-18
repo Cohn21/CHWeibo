@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
+import com.chweibo.android.ui.components.emoji.EmojiPicker
 import com.chweibo.android.ui.theme.WeiboOrange
 import com.chweibo.android.ui.viewmodel.PostViewModel
 import com.chweibo.android.ui.viewmodel.UiEvent
@@ -43,6 +44,7 @@ fun PostScreen(
     val isPosting by viewModel.isPosting.collectAsState()
     val canPost by viewModel.canPost.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showEmojiPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
@@ -146,6 +148,19 @@ fun PostScreen(
 
             Divider()
 
+            if (showEmojiPicker) {
+                EmojiPicker(
+                    onEmojiSelected = { emoji ->
+                        viewModel.updateContent(content + emoji)
+                    },
+                    onDelete = {
+                        if (content.isNotEmpty()) {
+                            viewModel.updateContent(content.dropLast(1))
+                        }
+                    }
+                )
+            }
+
             // 底部工具栏
             Row(
                 modifier = Modifier
@@ -178,11 +193,11 @@ fun PostScreen(
                         tint = WeiboOrange
                     )
                 }
-                IconButton(onClick = { /* 表情 */ }) {
+                IconButton(onClick = { showEmojiPicker = !showEmojiPicker }) {
                     Icon(
                         imageVector = Icons.Default.Face,
                         contentDescription = "表情",
-                        tint = WeiboOrange
+                        tint = if (showEmojiPicker) MaterialTheme.colorScheme.primary else WeiboOrange
                     )
                 }
             }

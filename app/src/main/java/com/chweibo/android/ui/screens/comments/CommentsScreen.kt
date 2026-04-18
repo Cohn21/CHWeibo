@@ -24,6 +24,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.chweibo.android.data.model.Comment
 import com.chweibo.android.data.model.WeiboPost
+import com.chweibo.android.ui.components.emoji.EmojiTextField
 import com.chweibo.android.ui.theme.TextGray
 import com.chweibo.android.ui.theme.WeiboOrange
 import com.chweibo.android.ui.viewmodel.CommentsViewModel
@@ -299,13 +300,11 @@ fun CommentInputBar(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedTextField(
+            EmojiTextField(
                 value = text,
                 onValueChange = onTextChange,
-                placeholder = { Text("写评论...") },
-                modifier = Modifier.weight(1f),
-                maxLines = 4,
-                shape = MaterialTheme.shapes.medium
+                placeholder = "写评论...",
+                modifier = Modifier.weight(1f)
             )
 
             Spacer(modifier = Modifier.width(8.dp))

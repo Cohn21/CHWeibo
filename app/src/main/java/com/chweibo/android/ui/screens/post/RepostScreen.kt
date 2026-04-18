@@ -16,9 +16,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.chweibo.android.data.model.WeiboPost
+import com.chweibo.android.ui.components.emoji.EmojiPicker
 import com.chweibo.android.ui.theme.RepostBackground
 import com.chweibo.android.ui.theme.WeiboOrange
 import com.chweibo.android.ui.viewmodel.RepostViewModel
+import com.chweibo.android.ui.viewmodel.UiEvent
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,9 +36,24 @@ fun RepostScreen(
     val isReposting by viewModel.isReposting.collectAsState()
     val canRepost by viewModel.canRepost.collectAsState()
     val isComment by viewModel.isComment.collectAsState()
+    var showEmojiPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(weiboId) {
         viewModel.loadOriginalWeibo(weiboId)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collectLatest { event ->
+            when (event) {
+                is UiEvent.Navigate -> {
+                    if (event.route == "back") onRepostSuccess()
+                }
+                is UiEvent.ShowSnackbar -> {
+                    // Snackbar could be shown here if a host state is available
+                }
+                else -> {}
+            }
+        }
     }
 
     Scaffold(
@@ -50,9 +68,7 @@ fun RepostScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            viewModel.repost(weiboId) {
-                                onRepostSuccess()
-                            }
+                            viewModel.repost(weiboId)
                         },
                         enabled = canRepost && !isReposting
                     ) {
@@ -130,6 +146,19 @@ fun RepostScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            if (showEmojiPicker) {
+                EmojiPicker(
+                    onEmojiSelected = { emoji ->
+                        viewModel.updateContent(content + emoji)
+                    },
+                    onDelete = {
+                        if (content.isNotEmpty()) {
+                            viewModel.updateContent(content.dropLast(1))
+                        }
+                    }
+                )
+            }
+
             // 底部工具栏
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -138,8 +167,12 @@ fun RepostScreen(
                 IconButton(onClick = { /* @功能 */ }) {
                     Icon(Icons.Default.AlternateEmail, contentDescription = "@", tint = WeiboOrange)
                 }
-                IconButton(onClick = { /* 表情 */ }) {
-                    Icon(Icons.Default.EmojiEmotions, contentDescription = "表情", tint = WeiboOrange)
+                IconButton(onClick = { showEmojiPicker = !showEmojiPicker }) {
+                    Icon(
+                        Icons.Default.EmojiEmotions,
+                        contentDescription = "表情",
+                        tint = if (showEmojiPicker) MaterialTheme.colorScheme.primary else WeiboOrange
+                    )
                 }
             }
         }

@@ -37,6 +37,7 @@ import com.chweibo.android.ui.screens.search.SearchScreen
 import com.chweibo.android.ui.screens.settings.SettingsScreen
 import com.chweibo.android.ui.screens.splash.SplashScreen
 import com.chweibo.android.ui.viewmodel.MainViewModel
+import com.chweibo.android.ui.viewmodel.UiEvent
 
 @Composable
 fun NavGraph(
@@ -121,6 +122,9 @@ fun NavigationHost(
                 },
                 onNavigateToRepost = { weiboId ->
                     navController.navigate(Screen.Repost.createRoute(weiboId))
+                },
+                onNavigateToComments = { weiboId ->
+                    navController.navigate(Screen.Comments.createRoute(weiboId))
                 }
             )
         }
@@ -139,6 +143,9 @@ fun NavigationHost(
                 },
                 onNavigateToRepost = { weiboId ->
                     navController.navigate(Screen.Repost.createRoute(weiboId))
+                },
+                onNavigateToComments = { weiboId ->
+                    navController.navigate(Screen.Comments.createRoute(weiboId))
                 }
             )
         }
@@ -163,6 +170,12 @@ fun NavigationHost(
                 },
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onNavigate = { route ->
+                    when (route) {
+                        "back" -> navController.popBackStack()
+                        else -> navController.navigate(route)
+                    }
                 }
             )
         }
@@ -211,11 +224,11 @@ fun NavigationHost(
         // Weibo Detail
         composable(
             route = Screen.WeiboDetail.route,
-            arguments = listOf(navArgument("weiboId") { type = NavType.LongType })
+            arguments = listOf(navArgument("weiboId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val weiboId = backStackEntry.arguments?.getLong("weiboId") ?: 0L
+            val weiboIdStr = backStackEntry.arguments?.getString("weiboId") ?: "0"
             WeiboDetailScreen(
-                weiboId = weiboId,
+                weiboId = weiboIdStr,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToUserProfile = { userId ->
                     navController.navigate(Screen.UserProfile.createRoute(userId))

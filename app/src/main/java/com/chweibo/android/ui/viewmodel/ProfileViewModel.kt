@@ -20,6 +20,12 @@ class ProfileViewModel @Inject constructor(
     val isLoggedIn: StateFlow<Boolean> = authRepository.isLoggedIn
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    private val _uiEvent = MutableSharedFlow<UiEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    val uiEvent: SharedFlow<UiEvent> = _uiEvent.asSharedFlow()
+
     init {
         loadUserInfo()
     }
@@ -31,8 +37,8 @@ class ProfileViewModel @Inject constructor(
                     .onSuccess { user ->
                         _user.value = user
                     }
-                    .onFailure {
-                        // Handle error
+                    .onFailure { e ->
+                        _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "加载用户信息失败"))
                     }
             }
         }

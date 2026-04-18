@@ -26,6 +26,12 @@ class MainViewModel @Inject constructor(
     val homeTimeline = weiboRepository.getHomeTimeline()
         .cachedIn(viewModelScope)
 
+    private val _uiEvent = MutableSharedFlow<UiEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    val uiEvent: SharedFlow<UiEvent> = _uiEvent.asSharedFlow()
+
     init {
         loadCurrentUser()
     }
@@ -37,8 +43,8 @@ class MainViewModel @Inject constructor(
                     .onSuccess { user ->
                         _currentUser.value = user
                     }
-                    .onFailure {
-                        // 处理错误
+                    .onFailure { e ->
+                        _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "加载用户信息失败"))
                     }
             }
         }
@@ -49,6 +55,9 @@ class MainViewModel @Inject constructor(
             authRepository.getCurrentUser()
                 .onSuccess { user ->
                     _currentUser.value = user
+                }
+                .onFailure { e ->
+                    _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "刷新用户信息失败"))
                 }
         }
     }

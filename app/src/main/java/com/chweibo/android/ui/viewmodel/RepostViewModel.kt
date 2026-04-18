@@ -26,6 +26,12 @@ class RepostViewModel @Inject constructor(
     private val _isComment = MutableStateFlow(false)
     val isComment: StateFlow<Boolean> = _isComment.asStateFlow()
 
+    private val _uiEvent = MutableSharedFlow<UiEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    val uiEvent: SharedFlow<UiEvent> = _uiEvent.asSharedFlow()
+
     val canRepost: StateFlow<Boolean> = combine(
         content,
         isReposting
@@ -35,9 +41,12 @@ class RepostViewModel @Inject constructor(
 
     fun loadOriginalWeibo(weiboId: Long) {
         viewModelScope.launch {
-            weiboRepository.getWeiboDetail(weiboId)
+            weiboRepository.getWeiboDetail(weiboId.toString())
                 .onSuccess { weibo ->
                     _originalWeibo.value = weibo
+                }
+                .onFailure { e ->
+                    _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "加载微博详情失败"))
                 }
         }
     }
@@ -50,7 +59,7 @@ class RepostViewModel @Inject constructor(
         _isComment.value = value
     }
 
-    fun repost(weiboId: Long, onSuccess: () -> Unit) {
+    fun repost(weiboId: Long) {
         viewModelScope.launch {
             _isReposting.value = true
 
@@ -60,9 +69,11 @@ class RepostViewModel @Inject constructor(
                 isComment = _isComment.value
             ).onSuccess {
                 _isReposting.value = false
-                onSuccess()
-            }.onFailure {
+                _uiEvent.emit(UiEvent.ShowSnackbar("转发成功"))
+                _uiEvent.emit(UiEvent.Navigate("back"))
+            }.onFailure { e ->
                 _isReposting.value = false
+                _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "转发失败"))
             }
         }
     }

@@ -30,16 +30,25 @@ class CommentsViewModel @Inject constructor(
     private val _replyToComment = MutableStateFlow<Comment?>(null)
     val replyToComment: StateFlow<Comment?> = _replyToComment.asStateFlow()
 
+    private val _uiEvent = MutableSharedFlow<UiEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    val uiEvent: SharedFlow<UiEvent> = _uiEvent.asSharedFlow()
+
     private var currentPage = 1
 
     fun loadWeiboAndComments(weiboId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
 
-            // 加载微博详情
-            weiboRepository.getWeiboDetail(weiboId)
+            // 加载微博详情 - 使用字符串ID避免精度丢失
+            weiboRepository.getWeiboDetail(weiboId.toString())
                 .onSuccess { post ->
                     _weibo.value = post
+                }
+                .onFailure { e ->
+                    _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "加载微博详情失败"))
                 }
 
             // 加载评论
@@ -54,8 +63,8 @@ class CommentsViewModel @Inject constructor(
             .onSuccess { response ->
                 _comments.value = response.comments
             }
-            .onFailure {
-                // 处理错误
+            .onFailure { e ->
+                _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "加载评论失败"))
             }
     }
 
@@ -92,8 +101,8 @@ class CommentsViewModel @Inject constructor(
                 _comments.value = listOf(newComment) + _comments.value
                 _commentText.value = ""
                 _replyToComment.value = null
-            }.onFailure {
-                // 显示错误
+            }.onFailure { e ->
+                _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "发表评论失败"))
             }
         }
     }
@@ -104,6 +113,9 @@ class CommentsViewModel @Inject constructor(
             weiboRepository.getComments(weiboId, currentPage)
                 .onSuccess { response ->
                     _comments.value = _comments.value + response.comments
+                }
+                .onFailure { e ->
+                    _uiEvent.emit(UiEvent.ShowSnackbar(e.message ?: "加载更多评论失败"))
                 }
         }
     }

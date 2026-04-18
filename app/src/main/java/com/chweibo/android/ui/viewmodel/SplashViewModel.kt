@@ -1,19 +1,25 @@
 package com.chweibo.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.chweibo.android.data.repository.AuthRepository
+import com.chweibo.android.data.local.SecureTokenDataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SplashViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val tokenRepo: SecureTokenDataStore
 ) : ViewModel() {
 
     suspend fun isLoggedIn(): Boolean {
-        return authRepository.isLoggedIn.first()
+        val loggedIn = tokenRepo.isLoggedIn.first()
+        if (!loggedIn) return false
+
+        val expiresAt = tokenRepo.expiresAt.first()
+        val isValid = expiresAt > System.currentTimeMillis()
+        if (!isValid) {
+            tokenRepo.clearToken()
+        }
+        return isValid
     }
 }

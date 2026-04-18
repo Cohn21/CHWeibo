@@ -1,18 +1,26 @@
 package com.chweibo.android.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chweibo.android.data.model.Comment
 import com.chweibo.android.data.model.WeiboPost
 import com.chweibo.android.data.repository.WeiboRepository
+import com.chweibo.android.utils.RateLimitManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class WeiboDetailViewModel @Inject constructor(
-    private val weiboRepository: WeiboRepository
+    private val weiboRepository: WeiboRepository,
+    private val rateLimitManager: RateLimitManager
 ) : ViewModel() {
 
     private val _weibo = MutableStateFlow<WeiboPost?>(null)
@@ -29,26 +37,64 @@ class WeiboDetailViewModel @Inject constructor(
 
     private val _replyToComment = MutableStateFlow<Comment?>(null)
 
-    fun loadWeiboDetail(weiboId: Long) {
+    private val _errorMessage = MutableSharedFlow<String>()
+    val errorMessage: SharedFlow<String> = _errorMessage.asSharedFlow()
+
+    companion object {
+        private const val TAG = "WeiboDetailViewModel"
+    }
+
+    fun loadWeiboDetail(weiboId: String) {
+        Log.d(TAG, "Loading weibo detail for id: $weiboId")
+
+        if (weiboId.isBlank()) {
+            Log.e(TAG, "Invalid weiboId: $weiboId")
+            viewModelScope.launch {
+                _errorMessage.emit("Invalid weibo id: $weiboId")
+            }
+            return
+        }
+
         viewModelScope.launch {
             _isLoading.value = true
 
-            // 加载微博详情
             weiboRepository.getWeiboDetail(weiboId)
                 .onSuccess { post ->
+                    Log.d(TAG, "Loaded weibo: ${post.id}, text: ${post.text.take(30)}")
                     _weibo.value = post
+                    loadComments(post.id)
                 }
-                .onFailure {
-                    // 处理错误
+                .onFailure { e ->
+                    Log.e(TAG, "Failed to load weibo: ${e.message}", e)
+                    val cachedWeibo = weiboRepository.getCachedWeibo(weiboId)
+                    if (e.message?.contains("20112") == true && cachedWeibo != null) {
+                        _weibo.value = cachedWeibo
+                        _comments.value = emptyList()
+                        _errorMessage.emit("Detail API denied access. Showing cached timeline content.")
+                    } else {
+                        _weibo.value = null
+                        _comments.value = emptyList()
+                        handleApiError(e, "Failed to load weibo detail")
+                    }
                 }
 
-            // 加载评论
+            _isLoading.value = false
+        }
+    }
+
+    private suspend fun loadComments(weiboId: Long) {
+        val (canCallComments, _) = rateLimitManager.canMakeCall("comments")
+        if (canCallComments) {
+            rateLimitManager.recordCall("comments")
             weiboRepository.getComments(weiboId)
                 .onSuccess { response ->
                     _comments.value = response.comments
                 }
-
-            _isLoading.value = false
+                .onFailure { e ->
+                    handleApiError(e, "Failed to load comments")
+                }
+        } else {
+            _errorMessage.emit("Comments are rate limited: ${rateLimitManager.getWaitMessage("comments")}")
         }
     }
 
@@ -58,7 +104,7 @@ class WeiboDetailViewModel @Inject constructor(
 
     fun replyTo(comment: Comment) {
         _replyToComment.value = comment
-        _commentText.value = "回复 @${comment.user?.screenName}: "
+        _commentText.value = "Reply @${comment.user?.screenName}: "
     }
 
     fun postComment() {
@@ -67,8 +113,15 @@ class WeiboDetailViewModel @Inject constructor(
             val text = _commentText.value.trim()
             if (text.isEmpty()) return@launch
 
+            val (canCall, _) = rateLimitManager.canMakeCall("comments")
+            if (!canCall) {
+                _errorMessage.emit(rateLimitManager.getWaitMessage("comments"))
+                return@launch
+            }
+
             val replyComment = _replyToComment.value
 
+            rateLimitManager.recordCall("comments")
             val result = if (replyComment != null) {
                 weiboRepository.replyComment(weiboId, replyComment.id, text)
             } else {
@@ -79,13 +132,11 @@ class WeiboDetailViewModel @Inject constructor(
                 _comments.value = listOf(newComment) + _comments.value
                 _commentText.value = ""
                 _replyToComment.value = null
-
-                // 更新评论数
                 _weibo.value = _weibo.value?.copy(
                     commentsCount = (_weibo.value?.commentsCount ?: 0) + 1
                 )
-            }.onFailure {
-                // 显示错误
+            }.onFailure { e ->
+                handleApiError(e, "Failed to post comment")
             }
         }
     }
@@ -95,6 +146,13 @@ class WeiboDetailViewModel @Inject constructor(
             val weiboId = _weibo.value?.id ?: return@launch
             val isLiked = _weibo.value?.favorited ?: false
 
+            val (canCall, _) = rateLimitManager.canMakeCall("like")
+            if (!canCall) {
+                _errorMessage.emit(rateLimitManager.getWaitMessage("like"))
+                return@launch
+            }
+
+            rateLimitManager.recordCall("like")
             val result = if (isLiked) {
                 weiboRepository.destroyAttitude(weiboId)
             } else {
@@ -110,6 +168,8 @@ class WeiboDetailViewModel @Inject constructor(
                         (_weibo.value?.attitudesCount ?: 0) + 1
                     }
                 )
+            }.onFailure { e ->
+                handleApiError(e, if (isLiked) "Failed to unlike weibo" else "Failed to like weibo")
             }
         }
     }
@@ -118,15 +178,39 @@ class WeiboDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val weiboId = _weibo.value?.id ?: return@launch
 
+            val (canCall, _) = rateLimitManager.canMakeCall("post")
+            if (!canCall) {
+                _errorMessage.emit(rateLimitManager.getWaitMessage("post"))
+                return@launch
+            }
+
+            rateLimitManager.recordCall("post")
             weiboRepository.repostWeibo(weiboId, content)
                 .onSuccess {
-                    // 转发成功
                     _weibo.value = _weibo.value?.copy(
                         repostsCount = (_weibo.value?.repostsCount ?: 0) + 1
                     )
-                }.onFailure {
-                    // 显示错误
+                    _errorMessage.emit("Repost succeeded")
+                }.onFailure { e ->
+                    handleApiError(e, "Failed to repost weibo")
                 }
         }
+    }
+
+    private suspend fun handleApiError(e: Throwable, defaultMsg: String) {
+        Log.e(TAG, "API Error: ${e.javaClass.simpleName}: ${e.message}", e)
+        val msg = when {
+            e.message?.contains("10023") == true -> {
+                rateLimitManager.setCooldown(true)
+                "Request too frequent, please try again later"
+            }
+            e.message?.contains("10022") == true -> "API quota exceeded"
+            e.message?.contains("10006") == true -> "Login required"
+            e.message?.contains("20101") == true -> "Weibo not found or deleted"
+            e.message?.contains("20112") == true -> "Permission denied for this weibo detail"
+            e.message?.contains("20003") == true -> "User not found"
+            else -> "$defaultMsg: ${e.message}"
+        }
+        _errorMessage.emit(msg)
     }
 }

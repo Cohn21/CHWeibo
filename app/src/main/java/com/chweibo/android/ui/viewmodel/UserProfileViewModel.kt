@@ -7,6 +7,7 @@ import androidx.paging.cachedIn
 import com.chweibo.android.data.model.User
 import com.chweibo.android.data.model.WeiboPost
 import com.chweibo.android.data.repository.WeiboRepository
+import com.chweibo.android.utils.RateLimitManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -14,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class UserProfileViewModel @Inject constructor(
-    private val weiboRepository: WeiboRepository
+    private val weiboRepository: WeiboRepository,
+    private val rateLimitManager: RateLimitManager
 ) : ViewModel() {
 
     private val _user = MutableStateFlow<User?>(null)
@@ -36,18 +38,24 @@ class UserProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
 
-            // 加载用户信息
-            weiboRepository.getUserInfo(userId)
-                .onSuccess { userInfo ->
-                    _user.value = userInfo
-                    _isFollowing.value = userInfo.following
-                }
-                .onFailure { e ->
-                    _errorMessage.emit(e.message ?: "加载用户信息失败")
-                }
+            // 检查速率限制
+            val (canCall, _) = rateLimitManager.canMakeCall("user_timeline")
+            if (canCall) {
+                // 加载用户信息
+                weiboRepository.getUserInfo(userId)
+                    .onSuccess { userInfo ->
+                        _user.value = userInfo
+                        _isFollowing.value = userInfo.following
+                    }
+                    .onFailure { e ->
+                        _errorMessage.emit(e.message ?: "加载用户信息失败")
+                    }
 
-            // 加载用户微博
-            loadUserWeibos(userId)
+                // 加载用户微博
+                loadUserWeibos(userId)
+            } else {
+                _errorMessage.emit("请求太频繁，请稍后再试")
+            }
 
             _isLoading.value = false
         }

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.chweibo.android.data.repository.DraftRepository
 import com.chweibo.android.data.repository.WeiboRepository
+import com.chweibo.android.utils.RateLimitManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -14,7 +15,8 @@ import javax.inject.Inject
 @HiltViewModel
 class PostViewModel @Inject constructor(
     private val weiboRepository: WeiboRepository,
-    private val draftRepository: DraftRepository
+    private val draftRepository: DraftRepository,
+    private val rateLimitManager: RateLimitManager
 ) : ViewModel() {
 
     private val _content = MutableStateFlow("")
@@ -59,9 +61,17 @@ class PostViewModel @Inject constructor(
                 return@launch
             }
 
+            // 检查速率限制
+            val (canCall, waitTime) = rateLimitManager.canMakeCall("post")
+            if (!canCall) {
+                _errorMessage.emit(rateLimitManager.getWaitMessage("post"))
+                return@launch
+            }
+
             _isPosting.value = true
 
             try {
+                rateLimitManager.recordCall("post")
                 val result = if (_selectedImages.value.isEmpty()) {
                     // 纯文本微博
                     weiboRepository.postWeibo(_content.value)
@@ -75,7 +85,7 @@ class PostViewModel @Inject constructor(
                     _postSuccess.emit(true)
                     clear()
                 }.onFailure { e ->
-                    _errorMessage.emit(e.message ?: "发布失败")
+                    handleApiError(e, "发布失败")
                 }
             } catch (e: Exception) {
                 _errorMessage.emit(e.message ?: "发布失败")
@@ -83,6 +93,18 @@ class PostViewModel @Inject constructor(
                 _isPosting.value = false
             }
         }
+    }
+
+    private suspend fun handleApiError(e: Throwable, defaultMsg: String) {
+        val msg = when {
+            e.message?.contains("10023") == true -> {
+                rateLimitManager.setCooldown(true)
+                "请求太频繁，请稍后再试"
+            }
+            e.message?.contains("10022") == true -> "接口请求次数已用完"
+            else -> e.message ?: defaultMsg
+        }
+        _errorMessage.emit(msg)
     }
 
     fun saveToDraft() {

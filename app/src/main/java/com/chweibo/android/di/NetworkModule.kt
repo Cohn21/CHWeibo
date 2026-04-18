@@ -1,14 +1,12 @@
 package com.chweibo.android.di
 
-import android.content.Context
 import com.chweibo.android.BuildConfig
 import com.chweibo.android.data.api.AuthInterceptor
 import com.chweibo.android.data.api.WeiboApiService
-import com.chweibo.android.data.local.TokenDataStore
+import com.chweibo.android.data.local.SecureTokenDataStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -23,13 +21,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideTokenDataStore(@ApplicationContext context: Context): TokenDataStore {
-        return TokenDataStore(context)
-    }
-
-    @Provides
-    @Singleton
-    fun provideAuthInterceptor(tokenDataStore: TokenDataStore): AuthInterceptor {
+    fun provideAuthInterceptor(tokenDataStore: SecureTokenDataStore): AuthInterceptor {
         return AuthInterceptor(tokenDataStore)
     }
 

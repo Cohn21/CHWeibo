@@ -1,6 +1,6 @@
 package com.chweibo.android.data.api
 
-import com.chweibo.android.data.local.TokenDataStore
+import com.chweibo.android.data.local.SecureTokenDataStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -11,7 +11,7 @@ import javax.inject.Singleton
 
 @Singleton
 class AuthInterceptor @Inject constructor(
-    private val tokenDataStore: TokenDataStore
+    private val tokenDataStore: SecureTokenDataStore
 ) : Interceptor {
 
     companion object {

@@ -2,7 +2,7 @@ package com.chweibo.android.data.repository
 
 import com.chweibo.android.BuildConfig
 import com.chweibo.android.data.api.WeiboApiService
-import com.chweibo.android.data.local.TokenDataStore
+import com.chweibo.android.data.local.SecureTokenDataStore
 import com.chweibo.android.data.model.AccessToken
 import com.chweibo.android.data.model.AuthConfig
 import com.chweibo.android.data.model.User
@@ -15,7 +15,7 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepository @Inject constructor(
     private val apiService: WeiboApiService,
-    private val tokenDataStore: TokenDataStore
+    private val tokenDataStore: SecureTokenDataStore
 ) {
     companion object {
         // CLIENT_SECRET removed — now injected via BuildConfig from local.properties

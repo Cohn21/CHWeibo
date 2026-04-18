@@ -18,7 +18,7 @@ class AuthRepository @Inject constructor(
     private val tokenDataStore: TokenDataStore
 ) {
     companion object {
-        const val CLIENT_SECRET = "3836abcf85a58fc94a65f2617828037a"  // 需要替换为实际的 App Secret
+        // CLIENT_SECRET removed — now injected via BuildConfig from local.properties
     }
 
     val isLoggedIn: Flow<Boolean> = tokenDataStore.isLoggedIn
@@ -49,7 +49,7 @@ class AuthRepository @Inject constructor(
             // 使用 code 换取 access_token
             val response = apiService.getAccessToken(
                 clientId = BuildConfig.WEIBO_APP_KEY,
-                clientSecret = CLIENT_SECRET,
+                clientSecret = BuildConfig.WEIBO_CLIENT_SECRET,
                 code = code,
                 redirectUri = BuildConfig.WEIBO_REDIRECT_URI
             )

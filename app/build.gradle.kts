@@ -10,6 +10,13 @@ android {
     namespace = "com.chweibo.android"
     compileSdk = 34
 
+    val localProperties = java.util.Properties().apply {
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            load(localPropertiesFile.inputStream())
+        }
+    }
+
     defaultConfig {
         applicationId = "com.chweibo.android"
         minSdk = 24
@@ -22,8 +29,11 @@ android {
             useSupportLibrary = true
         }
 
-        buildConfigField("String", "WEIBO_APP_KEY", "\"722182002\"")
-        buildConfigField("String", "WEIBO_REDIRECT_URI", "\"https://api.weibo.com/oauth2/default.html\"")
+        buildConfigField("String", "WEIBO_APP_KEY", "\"${localProperties.getProperty("WEIBO_APP_KEY", "")}\"")
+        buildConfigField("String", "WEIBO_CLIENT_SECRET", "\"${localProperties.getProperty("WEIBO_CLIENT_SECRET", "")}\"")
+        // 移动端回调地址，显示为 "Android手机" 而非 "Android上的Chrome"
+        // 使用官方移动端回调地址格式
+        buildConfigField("String", "WEIBO_REDIRECT_URI", "\"${localProperties.getProperty("WEIBO_REDIRECT_URI", "https://api.weibo.com/oauth2/default.html")}\"")
     }
 
     buildTypes {

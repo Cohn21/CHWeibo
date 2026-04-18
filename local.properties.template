@@ -1,0 +1,5 @@
+# Copy this file to local.properties and fill in your actual values.
+# local.properties is gitignored and should NEVER be committed.
+WEIBO_APP_KEY=your_app_key_here
+WEIBO_CLIENT_SECRET=your_client_secret_here
+WEIBO_REDIRECT_URI=https://api.weibo.com/oauth2/default.html

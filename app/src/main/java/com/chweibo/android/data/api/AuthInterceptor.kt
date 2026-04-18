@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,26 +14,37 @@ class AuthInterceptor @Inject constructor(
     private val tokenDataStore: TokenDataStore
 ) : Interceptor {
 
+    companion object {
+        private const val TAG = "AuthInterceptor"
+    }
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
         val originalUrl = originalRequest.url
+        val encodedPath = originalUrl.encodedPath
 
-        // 如果请求已经包含 access_token，直接发送
+        android.util.Log.d(TAG, "Intercepting request: $encodedPath")
+
         if (originalUrl.queryParameter("access_token") != null) {
+            android.util.Log.d(TAG, "Request already has access_token")
             return chain.proceed(originalRequest)
         }
 
-        // 获取保存的 token
         val token = runBlocking {
             tokenDataStore.accessToken.first()
         }
 
-        // 如果没有 token，直接发送请求（某些接口不需要认证）
+        android.util.Log.d(TAG, "Token present: ${!token.isNullOrEmpty()}")
+
+        val isOAuthRequest = encodedPath.contains("/oauth2/")
         if (token.isNullOrEmpty()) {
+            if (!isOAuthRequest) {
+                android.util.Log.e(TAG, "Missing access_token for request: $encodedPath")
+                throw IOException("Missing access_token for request: $encodedPath")
+            }
             return chain.proceed(originalRequest)
         }
 
-        // 添加 access_token 到请求
         val newUrl = originalUrl.newBuilder()
             .addQueryParameter("access_token", token)
             .build()
@@ -41,6 +53,12 @@ class AuthInterceptor @Inject constructor(
             .url(newUrl)
             .build()
 
-        return chain.proceed(newRequest)
+        val maskedUrl = newUrl.toString().replace(token, "TOKEN_HIDDEN")
+        android.util.Log.d(TAG, "Request URL: $maskedUrl")
+
+        val response = chain.proceed(newRequest)
+        android.util.Log.d(TAG, "Response code: ${response.code} for $encodedPath")
+
+        return response
     }
 }

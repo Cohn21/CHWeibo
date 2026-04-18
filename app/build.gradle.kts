@@ -120,6 +120,9 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
+    // Tink (Google Cryptography)
+    implementation("com.google.crypto.tink:tink-android:1.19.0")
+
     // Paging
     implementation("androidx.paging:paging-runtime-ktx:3.2.1")
     implementation("androidx.paging:paging-compose:3.2.1")

@@ -17,8 +17,11 @@ class LoginViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    private val _events = MutableSharedFlow<LoginEvent>()
-    val events: SharedFlow<LoginEvent> = _events.asSharedFlow()
+    private val _uiEvent = MutableSharedFlow<UiEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    val uiEvent: SharedFlow<UiEvent> = _uiEvent.asSharedFlow()
 
     val authUrl: String
         get() = authRepository.getAuthConfig().getAuthorizeUrl()
@@ -42,7 +45,7 @@ class LoginViewModel @Inject constructor(
             authRepository.handleAuthCallback(url)
                 .onSuccess { token ->
                     Log.d("LoginViewModel", "Token obtained: ${token.accessToken.take(10)}...")
-                    _events.emit(LoginEvent.NavigateToMain)
+                    _uiEvent.emit(UiEvent.Navigate("main"))
                 }
                 .onFailure { e ->
                     Log.e("LoginViewModel", "Auth failed", e)
@@ -64,8 +67,4 @@ class LoginViewModel @Inject constructor(
         val isLoading: Boolean = false,
         val error: String? = null
     )
-
-    sealed class LoginEvent {
-        data object NavigateToMain : LoginEvent()
-    }
 }

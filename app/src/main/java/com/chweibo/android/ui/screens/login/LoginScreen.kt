@@ -39,12 +39,6 @@ fun LoginScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(uiState.isLoggedIn) {
-        if (uiState.isLoggedIn) {
-            onLoginSuccess()
-        }
-    }
-
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collectLatest { event ->
             when (event) {
@@ -81,27 +75,20 @@ fun LoginScreen(
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
 
-                        val ALLOWED_HOSTS = setOf("api.weibo.com", "weibo.com", "passport.weibo.com")
-
                         webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(
                                 view: WebView?,
                                 request: WebResourceRequest?
                             ): Boolean {
                                 val url = request?.url?.toString() ?: return false
-                                val uri = android.net.Uri.parse(url)
 
-                                // Check callback first
+                                // Intercept OAuth callback URL only
                                 if (viewModel.isValidCallbackUrl(url)) {
                                     viewModel.handleAuthCallback(url)
                                     return true
                                 }
 
-                                // Block unknown hosts
-                                val host = uri.host ?: return true
-                                if (host !in ALLOWED_HOSTS && !host.endsWith(".weibo.com")) {
-                                    return true
-                                }
+                                // Allow all other URLs (login page, redirects, etc.)
                                 return false
                             }
                         }

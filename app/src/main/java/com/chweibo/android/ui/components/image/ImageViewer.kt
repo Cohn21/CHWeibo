@@ -149,7 +149,14 @@ fun ZoomableImage(
                     translationX = offset.x
                     translationY = offset.y
                 }
-                .transformable(state = transformableState),
+                // 只在缩放状态下启用 transformable，避免拦截 HorizontalPager 的滑动
+                .then(
+                    if (scale > 1f) {
+                        Modifier.transformable(state = transformableState)
+                    } else {
+                        Modifier
+                    }
+                ),
             contentScale = ContentScale.Fit
         )
     }

@@ -1,8 +1,6 @@
 package com.chweibo.android.data.api
 
 import com.chweibo.android.data.local.SecureTokenDataStore
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
@@ -11,7 +9,7 @@ import javax.inject.Singleton
 
 @Singleton
 class AuthInterceptor @Inject constructor(
-    private val tokenDataStore: SecureTokenDataStore
+    private val tokenRepo: SecureTokenDataStore
 ) : Interceptor {
 
     companion object {
@@ -30,9 +28,7 @@ class AuthInterceptor @Inject constructor(
             return chain.proceed(originalRequest)
         }
 
-        val token = runBlocking {
-            tokenDataStore.accessToken.first()
-        }
+        val token = tokenRepo.getAccessTokenSync()
 
         android.util.Log.d(TAG, "Token present: ${!token.isNullOrEmpty()}")
 

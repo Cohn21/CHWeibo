@@ -12,6 +12,7 @@ sealed class Screen(val route: String) {
     data object Settings : Screen("settings")
     data object WeiboDetail : Screen("weibo_detail/{weiboId}") {
         fun createRoute(weiboId: Long) = "weibo_detail/$weiboId"
+        fun createRoute(weiboId: String) = "weibo_detail/$weiboId"
     }
 
     data object UserProfile : Screen("user_profile/{userId}") {

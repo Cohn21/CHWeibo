@@ -2,6 +2,7 @@ package com.chweibo.android.data.local
 
 import androidx.room.TypeConverter
 import com.chweibo.android.data.model.Geo
+import com.chweibo.android.data.model.WeiboPost
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 

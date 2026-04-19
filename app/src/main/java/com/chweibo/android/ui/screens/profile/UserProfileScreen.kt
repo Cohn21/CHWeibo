@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
 fun UserProfileScreen(
     userId: Long,
     onNavigateBack: () -> Unit,
-    onNavigateToWeiboDetail: (Long) -> Unit,
+    onNavigateToWeiboDetail: (String) -> Unit,
     onNavigateToImageViewer: (List<String>, Int) -> Unit,
     viewModel: UserProfileViewModel = hiltViewModel()
 ) {
@@ -290,7 +290,7 @@ fun StatColumn(count: String, label: String) {
 fun UserWeiboList(
     weibos: List<WeiboPost>,
     isLoading: Boolean,
-    onWeiboClick: (Long) -> Unit,
+    onWeiboClick: (String) -> Unit,
     onImageClick: (List<String>, Int) -> Unit
 ) {
     if (isLoading && weibos.isEmpty()) {
@@ -312,7 +312,7 @@ fun UserWeiboList(
             items(weibos) { weibo ->
                 WeiboCard(
                     weibo = weibo,
-                    onWeiboClick = { onWeiboClick(weibo.id) },
+                    onWeiboClick = { onWeiboClick(weibo.idStr ?: weibo.id.toString()) },
                     onUserClick = { },
                     onImageClick = onImageClick,
                     onLikeClick = { },

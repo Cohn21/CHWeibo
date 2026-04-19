@@ -27,7 +27,7 @@ import com.chweibo.android.ui.viewmodel.SearchViewModel
 fun SearchScreen(
     onNavigateBack: () -> Unit,
     onNavigateToUserProfile: (Long) -> Unit,
-    onNavigateToWeiboDetail: (Long) -> Unit,
+    onNavigateToWeiboDetail: (String) -> Unit,
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -110,7 +110,7 @@ fun SearchScreen(
                     items(searchResults) { weibo ->
                         WeiboCard(
                             weibo = weibo,
-                            onWeiboClick = { onNavigateToWeiboDetail(weibo.id) },
+                            onWeiboClick = { onNavigateToWeiboDetail(weibo.idStr ?: weibo.id.toString()) },
                             onUserClick = { weibo.user?.id?.let { onNavigateToUserProfile(it) } },
                             onImageClick = { _, _ -> },
                             onLikeClick = { },
